@@ -71,7 +71,6 @@ class _HomePageBodyState extends State<HomePageBody> {
     bg.BackgroundGeolocation.onLocation((bg.Location location) async {
       if (locProvider != null && locProvider?.selectedPosLat != null) {
         await locProvider!.updateLocationDistance();
-        //setState(() {});
       }
     }, (bg.LocationError error) {
       if (kDebugMode) {
@@ -84,7 +83,6 @@ class _HomePageBodyState extends State<HomePageBody> {
     ) async {
       if (locProvider != null && locProvider?.selectedPosLat != null) {
         await locProvider!.updateLocationDistance();
-        //setState(() {});
       }
     });
 
