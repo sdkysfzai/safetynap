@@ -13,15 +13,16 @@ class NotificationService {
 
   NotificationService._internal();
 
-  static const channelId = "1";
-
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   // static const IOSNotificationDetails _iOSNotificationDetails =
   //     IOSNotificationDetails();
   static const DarwinNotificationDetails _darwinNotificationDetails =
-      DarwinNotificationDetails();
+      DarwinNotificationDetails(
+    presentSound: true,
+    sound: 'notification.caf',
+  );
 
   final NotificationDetails notificationDetails = const NotificationDetails(
     iOS: _darwinNotificationDetails,

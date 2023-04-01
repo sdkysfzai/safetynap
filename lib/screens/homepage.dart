@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
     as bg;
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:safety_nap/providers/location_provider.dart';
 import 'package:safety_nap/screens/view_geofences.dart';
@@ -42,6 +43,9 @@ class _HomePageBodyState extends State<HomePageBody> {
   LocationProvider? locProvider;
   bool isMetric = true;
   late SharedPreferences prefs;
+  NativeAd? nativeAd;
+  bool _nativeAdIsLoaded = false;
+  final String _adUnitId = 'ca-app-pub-7656590679135144~7936973767';
 
   @override
   void didChangeDependencies() {
@@ -50,8 +54,15 @@ class _HomePageBodyState extends State<HomePageBody> {
   }
 
   @override
+  void dispose() {
+    if (nativeAd != null) nativeAd!.dispose();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
+    loadAd();
     initSharedPrefs();
     //1.  Listen to events (See docs for all 12 available events).
 
@@ -162,9 +173,57 @@ class _HomePageBodyState extends State<HomePageBody> {
     );
   }
 
+  void loadAd() {
+    nativeAd = NativeAd(
+        adUnitId: _adUnitId,
+        listener: NativeAdListener(
+          onAdLoaded: (ad) {
+            debugPrint('$NativeAd loaded.');
+            setState(() {
+              _nativeAdIsLoaded = true;
+            });
+          },
+          onAdFailedToLoad: (ad, error) {
+            // Dispose the ad here to free resources.
+            debugPrint('$NativeAd failed to load: $error');
+            ad.dispose();
+          },
+        ),
+        request: const AdRequest(),
+        // Styling
+        nativeTemplateStyle: NativeTemplateStyle(
+            // Required: Choose a template.
+            templateType: TemplateType.medium,
+            // Optional: Customize the ad's style.
+            mainBackgroundColor: Colors.purple,
+            cornerRadius: 10.0,
+            callToActionTextStyle: NativeTemplateTextStyle(
+                textColor: Colors.cyan,
+                backgroundColor: Colors.red,
+                style: NativeTemplateFontStyle.monospace,
+                size: 16.0),
+            primaryTextStyle: NativeTemplateTextStyle(
+                textColor: Colors.red,
+                backgroundColor: Colors.cyan,
+                style: NativeTemplateFontStyle.italic,
+                size: 16.0),
+            secondaryTextStyle: NativeTemplateTextStyle(
+                textColor: Colors.green,
+                backgroundColor: Colors.black,
+                style: NativeTemplateFontStyle.bold,
+                size: 16.0),
+            tertiaryTextStyle: NativeTemplateTextStyle(
+                textColor: Colors.brown,
+                backgroundColor: Colors.amber,
+                style: NativeTemplateFontStyle.normal,
+                size: 16.0)))
+      ..load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final locationProvider = context.watch<LocationProvider>();
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -228,25 +287,36 @@ class _HomePageBodyState extends State<HomePageBody> {
             },
             max: 10000,
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                const Text(
-                  'Repeat',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-                ),
-                const Expanded(child: SizedBox()),
-                Switch(
-                    value: repeatSwitch,
-                    onChanged: (bool val) {
-                      setState(() {
-                        repeatSwitch = val;
-                      });
-                    })
-              ],
-            ),
-          ),
+          // Padding(
+          //   padding: const EdgeInsets.all(16.0),
+          //   child: Row(
+          //     children: [
+          //       const Text(
+          //         'Repeat',
+          //         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+          //       ),
+          //       const Expanded(child: SizedBox()),
+          //       Switch(
+          //           value: repeatSwitch,
+          //           onChanged: (bool val) {
+          //             setState(() {
+          //               repeatSwitch = val;
+          //             });
+          //           })
+          //     ],
+          //   ),
+          // ),
+          _nativeAdIsLoaded
+              ? ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 320, // minimum recommended width
+                    minHeight: 320, // minimum recommended height
+                    maxWidth: 400,
+                    maxHeight: 400,
+                  ),
+                  child: AdWidget(ad: nativeAd!),
+                )
+              : const SizedBox.shrink(),
         ],
       ),
     );

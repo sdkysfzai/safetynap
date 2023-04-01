@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:safety_nap/providers/location_provider.dart';
 import 'package:safety_nap/screens/homepage.dart';
@@ -6,6 +7,7 @@ import 'package:safety_nap/services/local_notifications.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MobileAds.instance.initialize();
   NotificationService notificationService = NotificationService();
   await notificationService.init();
   await notificationService.requestIOSPermissions();
@@ -39,7 +41,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (context) => LocationProvider()),
       ],
       child: MaterialApp(
-        title: 'Flutter Demo',
+        title: 'SafetyNap',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           primarySwatch: Colors.blue,

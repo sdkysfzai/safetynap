@@ -31,11 +31,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string></string>
+	<string>This app requires location permission so it can notify you if you reach your selected destination</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>This app requires location permission so it can notify you if you reach your selected destination</string>
 	<key>NSMotionUsageDescription</key>
-	<string></string>
+	<string>This app needs to be able to access your motion use so it can start tracking location when you are moving</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-7656590679135144~7936973767</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
