@@ -2,32 +2,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
     as bg;
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:safety_nap/providers/location_provider.dart';
 import 'package:safety_nap/screens/view_geofences.dart';
 import 'package:safety_nap/services/local_notifications.dart';
 import 'package:safety_nap/widgets/search_destination_form_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stack_appodeal_flutter/stack_appodeal_flutter.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: const Text('Safety Nap'),
-          actions: [
-            IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => const ViewGeofences()));
-                },
-                icon: const Icon(Icons.more_vert_rounded))
-          ],
-        ),
-        body: const SafeArea(child: HomePageBody()));
+    return const Scaffold(body: SafeArea(child: HomePageBody()));
   }
 }
 
@@ -43,9 +31,7 @@ class _HomePageBodyState extends State<HomePageBody> {
   LocationProvider? locProvider;
   bool isMetric = true;
   late SharedPreferences prefs;
-  NativeAd? nativeAd;
-  bool _nativeAdIsLoaded = false;
-  final String _adUnitId = 'ca-app-pub-7656590679135144~7936973767';
+  bool isReady = false;
 
   @override
   void didChangeDependencies() {
@@ -55,14 +41,15 @@ class _HomePageBodyState extends State<HomePageBody> {
 
   @override
   void dispose() {
-    if (nativeAd != null) nativeAd!.dispose();
+    Appodeal.destroy(AppodealAdType.MREC);
+
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    loadAd();
+    _showMRECAd();
     initSharedPrefs();
     //1.  Listen to events (See docs for all 12 available events).
 
@@ -171,51 +158,10 @@ class _HomePageBodyState extends State<HomePageBody> {
     );
   }
 
-  void loadAd() {
-    nativeAd = NativeAd(
-        adUnitId: _adUnitId,
-        listener: NativeAdListener(
-          onAdLoaded: (ad) {
-            debugPrint('$NativeAd loaded.');
-            setState(() {
-              _nativeAdIsLoaded = true;
-            });
-          },
-          onAdFailedToLoad: (ad, error) {
-            // Dispose the ad here to free resources.
-            debugPrint('$NativeAd failed to load: $error');
-            ad.dispose();
-          },
-        ),
-        request: const AdRequest(),
-        // Styling
-        nativeTemplateStyle: NativeTemplateStyle(
-            // Required: Choose a template.
-            templateType: TemplateType.medium,
-            // Optional: Customize the ad's style.
-            mainBackgroundColor: Colors.purple,
-            cornerRadius: 10.0,
-            callToActionTextStyle: NativeTemplateTextStyle(
-                textColor: Colors.cyan,
-                backgroundColor: Colors.red,
-                style: NativeTemplateFontStyle.monospace,
-                size: 16.0),
-            primaryTextStyle: NativeTemplateTextStyle(
-                textColor: Colors.red,
-                backgroundColor: Colors.cyan,
-                style: NativeTemplateFontStyle.italic,
-                size: 16.0),
-            secondaryTextStyle: NativeTemplateTextStyle(
-                textColor: Colors.green,
-                backgroundColor: Colors.black,
-                style: NativeTemplateFontStyle.bold,
-                size: 16.0),
-            tertiaryTextStyle: NativeTemplateTextStyle(
-                textColor: Colors.brown,
-                backgroundColor: Colors.amber,
-                style: NativeTemplateFontStyle.normal,
-                size: 16.0)))
-      ..load();
+  Future<void> _showMRECAd() async {
+    isReady = await Appodeal.isLoaded(AppodealAdType.MREC);
+    setState(() {});
+    print('isReady: $isReady');
   }
 
   @override
@@ -225,95 +171,155 @@ class _HomePageBodyState extends State<HomePageBody> {
     return SingleChildScrollView(
       child: Column(
         children: [
+          Row(
+            children: [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: EdgeInsets.only(left: 24),
+                  child: Text(
+                    'SafetyNap',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+                  ),
+                ),
+              ),
+              const Expanded(child: SizedBox()),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => const ViewGeofences()));
+                    },
+                    icon: const Icon(
+                      Icons.apps,
+                      color: Colors.black,
+                    )),
+              ),
+            ],
+          ),
+
           const SearchDestinationFormField(),
           const SizedBox(height: 18),
-          Text(
-            locationProvider.locName != null
-                ? 'Distance from: ${locationProvider.locName} ${(convertMeter(locationProvider.locDistance!))}'
-                : '',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                ElevatedButton(
-                    onPressed: () async {
-                      await prefs.setBool('isMetric', true);
-                      isMetric = true;
-                      setState(() {});
-                    },
-                    child: const Text('Metric')),
-                const SizedBox(width: 6),
-                ElevatedButton(
-                    onPressed: () async {
-                      await prefs.setBool('isMetric', false);
-                      isMetric = false;
-                      setState(() {});
-                    },
-                    child: const Text('Imperial'))
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                const Text(
-                  'Alarm Distance',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-                ),
-                const Expanded(child: SizedBox()),
-                Text(
-                  '${(convertMeter(locationProvider.sliderValue))} ',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-          ),
-          Slider(
-            value: locationProvider.sliderValue,
-            min: 200,
-            onChanged: (val) {
-              setState(() {
-                locationProvider.updateRadiusSlider(val);
-              });
-            },
-            max: 10000,
-          ),
-          // Padding(
-          //   padding: const EdgeInsets.all(16.0),
-          //   child: Row(
-          //     children: [
-          //       const Text(
-          //         'Repeat',
-          //         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-          //       ),
-          //       const Expanded(child: SizedBox()),
-          //       Switch(
-          //           value: repeatSwitch,
-          //           onChanged: (bool val) {
-          //             setState(() {
-          //               repeatSwitch = val;
-          //             });
-          //           })
-          //     ],
-          //   ),
-          // ),
-          _nativeAdIsLoaded
-              ? ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 320, // minimum recommended width
-                    minHeight: 320, // minimum recommended height
-                    maxWidth: 400,
-                    maxHeight: 400,
-                  ),
-                  child: AdWidget(ad: nativeAd!),
+          // locProvider!.locName != null
+          //     ? Text.rich(
+          //         TextSpan(
+          //           text: 'Currently Selected: ',
+          //           style: const TextStyle(
+          //               fontSize: 16, fontWeight: FontWeight.w500),
+          //           children: [
+          //             TextSpan(
+          //                 text: locProvider!.locName,
+          //                 style: const TextStyle(
+          //                     fontSize: 16, fontWeight: FontWeight.bold)),
+          //           ],
+          //         ),
+          //       )
+          //     : const SizedBox.shrink(),
+          locationProvider.locDistance != null
+              ? Text.rich(
+                  TextSpan(
+                      text: locationProvider.locName != null
+                          ? 'Distance from: '
+                          : '',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      children: [
+                        TextSpan(
+                            text: '${locationProvider.locName}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16)),
+                        TextSpan(
+                            text:
+                                ' ${(convertMeter(locationProvider.locDistance!))}',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w500))
+                      ]),
                 )
+              : const SizedBox.shrink(),
+          const SizedBox(
+            height: 12,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
+              decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(16)),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Alarm Distance',
+                          style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white),
+                        ),
+                        const Expanded(child: SizedBox()),
+                        Text(
+                          '${(convertMeter(locationProvider.sliderValue))} ',
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Slider(
+                    value: locationProvider.sliderValue,
+                    min: 200,
+                    activeColor: const Color.fromRGBO(83, 118, 146, 100),
+                    onChanged: (val) {
+                      setState(() {
+                        locationProvider.updateRadiusSlider(val);
+                      });
+                    },
+                    max: 10000,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    const Color.fromRGBO(83, 118, 146, 100)),
+                            onPressed: () async {
+                              if (isMetric) {
+                                await prefs.setBool('isMetric', false);
+                                isMetric = false;
+                              } else {
+                                await prefs.setBool('isMetric', true);
+                                isMetric = true;
+                              }
+                              setState(() {});
+                            },
+                            child: Text(
+                              isMetric ? 'Metric' : 'Imperial',
+                              style: const TextStyle(color: Colors.white),
+                            )),
+                        const SizedBox(width: 12),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          isReady
+              ? const AppodealBanner(
+                  adSize: AppodealBannerSize.MEDIUM_RECTANGLE,
+                  placement: "home_screen")
               : const SizedBox.shrink(),
         ],
       ),

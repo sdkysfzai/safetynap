@@ -28,6 +28,7 @@ class _SearchDestinationFormFieldState
   late String _countryCode;
   List<PredictedPlaces> placesPredictedList = [];
   String selectedDestination = '';
+  Widget myAnimtedWidget = const ResultMessageWidget();
 
   @override
   void initState() {
@@ -46,7 +47,8 @@ class _SearchDestinationFormFieldState
       required double lng,
       required double radius,
       bool? notifyOnEntry,
-      bool? notifyOnExit}) async {
+      bool? notifyOnExit,
+      required double sliderValue}) async {
     bg.BackgroundGeolocation.addGeofence(bg.Geofence(
         identifier: identifier,
         radius: radius,
@@ -54,7 +56,7 @@ class _SearchDestinationFormFieldState
         longitude: lng,
         notifyOnEntry: notifyOnEntry ?? true,
         notifyOnExit: notifyOnExit ?? false,
-        extras: {"route_id": 1234})).then((bool success) {
+        extras: {"alarm_distance": sliderValue})).then((bool success) {
       Fluttertoast.showToast(
           msg: 'Destination $identifier added Successfully!',
           toastLength: Toast.LENGTH_LONG);
@@ -71,76 +73,97 @@ class _SearchDestinationFormFieldState
     return result;
   }
 
-  void resetField(
-      PredictedPlaces predictedPlace, LocationProvider locProvider) async {
+  void resetField(PredictedPlaces predictedPlace, LocationProvider locProvider,
+      double sliderValue) async {
     final result = await getPlaceDetails(predictedPlace.placeId!);
     await _addDestination(
         identifier: result.identifier,
         lat: result.lat,
         lng: result.lng,
-        radius: locProvider.sliderValue);
+        radius: locProvider.sliderValue,
+        sliderValue: sliderValue);
     locProvider.updateSelectedPosition(
         result.lat, result.lng, result.identifier);
     locProvider.locName = result.identifier;
-    placesPredictedList.clear();
+    placesPredictedList = [];
+    myAnimtedWidget = const ResultMessageWidget();
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final locProvider = context.read<LocationProvider>();
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: TextField(
-            controller: _controller,
-            decoration: const InputDecoration(
-                hintText: 'Destination',
-                fillColor: Colors.white,
-                filled: true,
-                hintStyle: TextStyle(color: Colors.black),
-                disabledBorder: OutlineInputBorder(),
-                border: OutlineInputBorder(),
-                focusedBorder: OutlineInputBorder(),
-                contentPadding: EdgeInsets.only(left: 11, top: 8, bottom: 8)),
-          ),
-        ),
-        //search place results
-        if (placesPredictedList.isNotEmpty && _controller.text.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: Container(
-              height: 220,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                border: Border.all(color: Colors.grey),
-              ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: placesPredictedList.length,
-                physics: const ClampingScrollPhysics(),
-                itemBuilder: (context, index) {
-                  return PlacePredictionTileDesign(
-                    predictedPlaces: placesPredictedList[index],
-                    callbackAction: () =>
-                        resetField(placesPredictedList[index], locProvider),
-                  );
-                },
-                separatorBuilder: (context, index) => const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 2),
-                  child: Divider(
-                    height: 1,
-                    color: Colors.black,
-                    thickness: 1,
+          padding: const EdgeInsets.all(24.0),
+          child: Stack(
+            children: [
+              Container(
+                height: 250,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(83, 118, 146, 100),
+                  borderRadius: BorderRadius.circular(48),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      const Text(
+                        'Add a Destination',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 24),
+                      ),
+                      const Text(
+                        'Select a location to be notified when you reach the destination',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w500, fontSize: 18),
+                      ),
+                      TextField(
+                        cursorColor: Colors.grey,
+                        style: const TextStyle(color: Colors.black87),
+                        controller: _controller,
+                        onChanged: (val) {
+                          if (val.isEmpty) {
+                            setState(() {
+                              placesPredictedList = [];
+                              myAnimtedWidget = const ResultMessageWidget();
+                            });
+                          }
+                        },
+                        decoration: InputDecoration(
+                            hintText: 'Destination',
+                            fillColor: Colors.white,
+                            filled: true,
+                            hoverColor: Colors.red,
+                            hintStyle: const TextStyle(color: Colors.grey),
+                            suffixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.grey,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: const BorderSide(width: 0)),
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: const BorderSide(width: 0.3)),
+                            contentPadding: const EdgeInsets.only(
+                                left: 11, top: 8, bottom: 8)),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-          )
-        else
-          const SizedBox.shrink()
+            ],
+          ),
+        ),
+        //search place results
+        AnimatedSwitcher(
+            duration: const Duration(seconds: 1), child: myAnimtedWidget),
       ],
     );
   }
@@ -150,22 +173,58 @@ class _SearchDestinationFormFieldState
   }
 
   void getSuggestion(String input) async {
+    final locProvider = context.read<LocationProvider>();
+
     if (input.isNotEmpty) {
       String urlAutoCompleteSearch =
           "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$input&key=$androidiOSKey&components=country:$_countryCode";
       var response = await RequestData.get(urlAutoCompleteSearch);
       if (response != "Error") {
         if (response["status"] == "OK") {
-          var placesPredictions = response["predictions"];
-          var placePredictionsList = (placesPredictions as List)
-              .map((jsonData) => PredictedPlaces.fromMap(jsonData))
-              .toList();
-          setState(() {
-            placesPredictedList = placePredictionsList;
-          });
+          if (_controller.text.isNotEmpty) {
+            var placesPredictions = response["predictions"];
+            var placePredictionsList = (placesPredictions as List)
+                .map((jsonData) => PredictedPlaces.fromMap(jsonData))
+                .toList();
+            setState(() {
+              placesPredictedList = placePredictionsList;
+              myAnimtedWidget = placePredictionTile(locProvider);
+            });
+          } else {
+            placesPredictedList = [];
+          }
         }
       }
     }
+  }
+
+  Padding placePredictionTile(LocationProvider locProvider) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 24,
+      ),
+      child: Container(
+        height: 260,
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 0),
+        // decoration: const BoxDecoration(
+        //   color: Colors.black87,
+        //   borderRadius: BorderRadius.all(Radius.circular(12)),
+        // ),
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: placesPredictedList.length,
+          physics: const ClampingScrollPhysics(),
+          itemBuilder: (context, index) {
+            return PlacePredictionTileDesign(
+              predictedPlaces: placesPredictedList[index],
+              callbackAction: () => resetField(placesPredictedList[index],
+                  locProvider, locProvider.sliderValue),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> getCountryPhoneCode() async {
@@ -173,5 +232,27 @@ class _SearchDestinationFormFieldState
     var jsonResponse = json.decode(response.body);
     final isoCode = jsonResponse['countryCode'];
     _countryCode = isoCode;
+  }
+}
+
+class ResultMessageWidget extends StatelessWidget {
+  const ResultMessageWidget({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return const Align(
+      alignment: Alignment.center,
+      child: SizedBox(
+        height: 50,
+        width: double.infinity,
+        child: Text(
+          'Your results will show here',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+      ),
+    );
   }
 }

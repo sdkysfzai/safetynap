@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:safety_nap/models/predicted_places_model.dart';
 
@@ -18,13 +17,13 @@ class _PlacePredictionTileDesignState extends State<PlacePredictionTileDesign> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
       child: ElevatedButton(
         onPressed: widget.callbackAction,
         style: ElevatedButton.styleFrom(
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
-          ),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(width: 0.2)),
           backgroundColor: Colors.white,
         ),
         child: Padding(
@@ -33,7 +32,7 @@ class _PlacePredictionTileDesignState extends State<PlacePredictionTileDesign> {
             children: [
               const Icon(
                 Icons.add_location,
-                color: Colors.black,
+                color: Colors.lightGreenAccent,
               ),
               const SizedBox(
                 width: 14.0,
